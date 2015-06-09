@@ -1,0 +1,53 @@
+#!/bin/bash
+
+PATH="/bin:/usr/bin"
+
+flags="--make -Wall -O2 -fspec-constr-count=16"
+debug_flags="-prof -auto-all -rtsopts"
+base_time=60
+grace_time=15
+kill_time=5
+
+trap exit SIGINT
+
+function child_handler () {
+	if [[ -z "$(jobs -r)" ]] ; then
+		exit 0
+	fi
+}
+
+if [[ ${1} = '-d' ]] ; then
+
+	# Enable debug mode and eat the "-d" argument
+	flags="${flags} ${debug_flags}"
+	shift
+
+fi
+
+ghc ${flags} Main.hs || exit
+
+if [[ ${#} -gt 0 ]] ; then
+
+	# Enable shell job monitoring (not enabled by default on non-interactive
+	# shells)
+	set -m
+	set -o monitor
+	# Automatically exit if the job is finished
+	trap child_handler SIGCHLD
+
+	echo "Attempting project Euler problem #${1}"
+	./Main ${@} &
+	pid="${!}"
+
+	for (( i="${base_time}" ; ${i} ; i=$((i-1)) )) ; do
+		sleep 1
+	done
+	echo "Base time elapsed"
+
+	for (( i="${grace_time}" ; ${i} ; i=$((i-1)) )) ; do
+		sleep 1
+	done
+	echo "Grace time elapsed; terminating process ${pid}"
+	kill -s SIGTERM "%1" || { sleep "${kill_time}" ; kill -s SIGKILL "%1" ; }
+
+fi

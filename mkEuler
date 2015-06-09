@@ -1,0 +1,6 @@
+#!/bin/sh
+
+num=$1
+fname="Euler/E${num}.hs"
+cp --interactive --verbose Euler.tmpl.hs ${fname} && \
+	sed --in-place --expression="s/NUM/${num}/g" ${fname}
